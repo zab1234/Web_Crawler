@@ -1,0 +1,193 @@
+#!/usr/bin/env python3
+
+import argparse
+import socket, ssl, html.parser, sys
+
+DEFAULT_SERVER = "www.3700.network"
+DEFAULT_PORT = 443
+
+
+class MyParser(html.parser.HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.hyperlinks = []
+        self.flags = []
+        self.flag_found = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            for key, value in attrs:
+                if key == "href" and value[0] == "/":
+                    self.hyperlinks.append(value)
+        elif tag == "h3":
+            for key, value in attrs:
+                if key == 'class' and value == 'secret_flag':
+                    self.flag_found = True
+
+    def handle_data(self, data):
+        if self.flag_found:
+            self.flags.append(data)
+
+    def get_hyperlinks(self):
+        return self.hyperlinks
+
+    def get_flags(self):
+        return self.flags
+
+class Crawler:
+    def __init__(self, args):
+        self.server = args.server
+        self.port = args.port
+        self.username = args.username
+        self.password = args.password
+        self.frontier = []
+        self.visited = []
+        self.cookies = {}
+        self.flags = []
+        self.visited.append('/accounts/login/')
+        self.visited.append('/')
+        self.visited.append('/accounts/logout/')
+        self.frontier.append('/fakebook/')
+
+    def parse_document(self, data):
+        parse = MyParser()
+        parse.feed(data)
+        links = parse.get_hyperlinks()
+        for link in links:
+            if link not in self.visited:
+                self.frontier.append(link)
+        self.flags = parse.get_flags()
+        parse.close()
+
+    def get_cookies(self, data):
+        data = data.split('\r\n')
+        for line in data:
+            if 'set-cookie' in line:
+                seperator = line.index(":")
+                cookies = line[seperator+1:].split('=')
+                self.cookies[cookies[0].strip()] = cookies[1][:cookies[1].index(';')]
+
+    def start(self, mysocket):
+        #socket = self.open_connection()
+        self.send_get("/accounts/login/?next=/fakebook/", mysocket)
+        data = self.read_data(mysocket)
+        self.parse_document(data)
+        self.get_cookies(data)
+        #socket = self.open_connection()
+        try:
+            self.send_login("/accounts/login/?next=/fakebook/", self.get_csrf(data), mysocket)
+        except ValueError:
+            self.start(mysocket)
+            return
+        data = self.read_data(mysocket)
+        self.parse_document(data)
+        self.get_cookies(data)
+
+    def get_csrf(self, data):
+        data.index('name="csrfmiddlewaretoken" value="')
+        data = data[data.index('name="csrfmiddlewaretoken" value="') + len('name="csrfmiddlewaretoken" value="'):]
+        for i in range(len(data)):
+            if data[i] == '"':
+                return data[:i]
+
+    def read_data(self, socket):
+            final_data = ""
+            while True:
+                data = socket.recv(4096).decode('ascii')
+                if not data:
+                    return final_data
+                final_data = final_data + data
+                sys.stderr.write(data)
+                return final_data
+
+    def send_get(self, address, socket):
+        request = "GET " + address + " HTTP/1.0\r\nhost: "+self.server+'\r\n'
+        if len(self.cookies) > 0:
+            request += "Cookie: "
+            for key, value in self.cookies.items():
+                request = request + key + "=" + value + ';'
+            request = request[0:len(request)-1]
+            request += "\r\n"
+        request = request+'Connection: Keep-Alive\r\n'
+        request = request+"\r\n"
+        sys.stderr.write(request)
+        request = request.encode('ascii')
+        socket.send(request)
+        self.visited.append(address)
+
+    def send_login(self, address, csrf, socket):
+        header = "POST " + address + " HTTP/1.0\r\nhost: "+self.server+"\r\n"
+        if len(self.cookies) > 0:
+            header += "Cookie: "
+            for key, value in self.cookies.items():
+                header = header + key + "=" + value + ';'
+            header = header[0:len(header)-1]
+            header = header + '\r\n'
+        header = header + "Content-Length: " + str(186) + "\r\n"
+        header = header + "User-Agent: HTTPTool/1.0\r\nContent-Type: application/x-www-form-urlencoded\r\n"
+        header = header+'Connection: keep-alive\r\n'
+        header = header + '\r\n'
+        body = "username="+self.username+"&password="+self.password+"&csrfmiddlewaretoken=" + csrf + "&next=" + "\r\n"
+        request = header+body
+        sys.stderr.write(request)
+        socket.send(request.encode('ascii'))
+
+    def open_connection(self):
+        mysocket = ssl.create_default_context().wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+                                                            server_hostname=self.server)
+        mysocket.connect((self.server, self.port))
+        return mysocket
+
+    def find_location(self, data):
+        split = data.splitlines()
+        for line in split:
+            if "Location" in line:
+                self.frontier.append(line[line.index(':'):])
+
+
+    def run(self):
+        mysocket = self.open_connection()
+        self.start(mysocket)
+        while True:
+            for url in self.frontier:
+                retry = False
+                if url in self.visited:
+                    self.frontier.remove(url)
+                    continue
+                self.send_get(url, mysocket)
+                data = self.read_data(mysocket)
+                if data[9:12] == "302":
+                    self.find_location(data)
+                    self.visited.append(url)
+                    self.frontier.remove(url)
+                    continue
+                elif data[9:12] == "403" or data[9:12] == "404":
+                    self.visited.append(url)
+                    self.frontier.remove(url)
+                    continue
+                elif data[9:12] == "503":
+                    retry = True
+                self.parse_document(data)
+                self.get_cookies(data)
+                if retry:
+                    self.visited.remove(url)
+                    self.frontier.append(url)
+                    continue
+                if len(self.flags) == 5:
+                    for flag in self.flags:
+                        print(flag)
+                    return
+                self.frontier.remove(url)
+                sys.stderr.write(str(self.frontier))
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='crawl Fakebook')
+    parser.add_argument('-s', dest="server", type=str, default=DEFAULT_SERVER, help="The server to crawl")
+    parser.add_argument('-p', dest="port", type=int, default=DEFAULT_PORT, help="The port to use")
+    parser.add_argument('username', type=str, help="The username to use")
+    parser.add_argument('password', type=str, help="The password to use")
+    args = parser.parse_args()
+    sender = Crawler(args)
+    sender.run()
