@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import select
 import socket, ssl, html.parser, sys
 
 DEFAULT_SERVER = "www.3700.network"
@@ -19,20 +20,10 @@ class MyParser(html.parser.HTMLParser):
             for key, value in attrs:
                 if key == "href" and value[0] == "/":
                     self.hyperlinks.append(value)
-        elif tag == "h3":
-            for key, value in attrs:
-                if key == 'class' and value == 'secret_flag':
-                    self.flag_found = True
-
-    def handle_data(self, data):
-        if self.flag_found:
-            self.flags.append(data)
 
     def get_hyperlinks(self):
         return self.hyperlinks
 
-    def get_flags(self):
-        return self.flags
 
 class Crawler:
     def __init__(self, args):
@@ -56,8 +47,12 @@ class Crawler:
         for link in links:
             if link not in self.visited:
                 self.frontier.append(link)
-        self.flags = parse.get_flags()
         parse.close()
+        words = data.split(' ')
+        for i in range(len(words)):
+            if 'style="color:red">FLAG:' in words[i]:
+                self.flags.append(words[i+1][0:len(words[i+1]) - 6])
+                return
 
     def get_cookies(self, data):
         data = data.split('\r\n')
@@ -70,18 +65,20 @@ class Crawler:
     def start(self, mysocket):
         #socket = self.open_connection()
         self.send_get("/accounts/login/?next=/fakebook/", mysocket)
+        header = self.read_header(mysocket)
         data = self.read_data(mysocket)
         self.parse_document(data)
-        self.get_cookies(data)
+        self.get_cookies(header)
         #socket = self.open_connection()
         try:
             self.send_login("/accounts/login/?next=/fakebook/", self.get_csrf(data), mysocket)
         except ValueError:
             self.start(mysocket)
             return
-        data = self.read_data(mysocket)
+        header = self.read_header(mysocket)
+        #data = self.read_data(mysocket)
         self.parse_document(data)
-        self.get_cookies(data)
+        self.get_cookies(header)
 
     def get_csrf(self, data):
         data.index('name="csrfmiddlewaretoken" value="')
@@ -91,14 +88,32 @@ class Crawler:
                 return data[:i]
 
     def read_data(self, socket):
-            final_data = ""
-            while True:
-                data = socket.recv(4096).decode('ascii')
-                if not data:
-                    return final_data
-                final_data = final_data + data
-                sys.stderr.write(data)
-                return final_data
+        final = ""
+        count = 0
+        while True:
+            data = socket.recv(1).decode('ascii')
+            if data == '<' or data == '/' or data == 'h'or data == 't'or data == 'm'or data == 'l' or data == '>':
+                count += 1
+            else:
+                count = 0
+            final += data
+            if count == 7:
+                sys.stderr.write(final)
+                return final
+
+    def read_header(self, socket):
+        final = ''
+        count = 0
+        while True:
+            data = socket.recv(1).decode('ascii')
+            if data == '\r' or data == '\n':
+                count += 1
+            else:
+                count = 0
+            final = final + data
+            if count == 4:
+                sys.stderr.write(final)
+                return final
 
     def send_get(self, address, socket):
         request = "GET " + address + " HTTP/1.0\r\nhost: "+self.server+'\r\n'
@@ -155,20 +170,21 @@ class Crawler:
                     self.frontier.remove(url)
                     continue
                 self.send_get(url, mysocket)
-                data = self.read_data(mysocket)
-                if data[9:12] == "302":
-                    self.find_location(data)
+                header = self.read_header(mysocket)
+                if header[9:12] == "302":
+                    self.find_location(header)
                     self.visited.append(url)
                     self.frontier.remove(url)
                     continue
-                elif data[9:12] == "403" or data[9:12] == "404":
+                elif header[9:12] == "403" or header[9:12] == "404":
                     self.visited.append(url)
                     self.frontier.remove(url)
                     continue
-                elif data[9:12] == "503":
+                elif header[9:12] == "503":
                     retry = True
+                data = self.read_data(mysocket)
                 self.parse_document(data)
-                self.get_cookies(data)
+                self.get_cookies(header)
                 if retry:
                     self.visited.remove(url)
                     self.frontier.append(url)
@@ -176,9 +192,10 @@ class Crawler:
                 if len(self.flags) == 5:
                     for flag in self.flags:
                         print(flag)
-                    return
+                    sys.exit(0)
                 self.frontier.remove(url)
-                sys.stderr.write(str(self.frontier))
+                #sys.stderr.write(str(self.frontier))
+                sys.stderr.write(str(self.flags))
 
 
 
