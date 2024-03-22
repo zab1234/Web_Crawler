@@ -116,7 +116,7 @@ class Crawler:
                 return final
 
     def send_get(self, address, socket):
-        request = "GET " + address + " HTTP/1.0\r\nhost: "+self.server+'\r\n'
+        request = "GET " + address + " HTTP/1.1\r\nhost: "+self.server+'\r\n'
         if len(self.cookies) > 0:
             request += "Cookie: "
             for key, value in self.cookies.items():
@@ -131,7 +131,7 @@ class Crawler:
         self.visited.append(address)
 
     def send_login(self, address, csrf, socket):
-        header = "POST " + address + " HTTP/1.0\r\nhost: "+self.server+"\r\n"
+        header = "POST " + address + " HTTP/1.1\r\nhost: "+self.server+"\r\n"
         if len(self.cookies) > 0:
             header += "Cookie: "
             for key, value in self.cookies.items():
