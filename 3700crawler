@@ -52,6 +52,7 @@ class Crawler:
         for i in range(len(words)):
             if 'style="color:red">FLAG:' in words[i]:
                 self.flags.append(words[i+1][0:len(words[i+1]) - 6])
+                print(words[i+1][0:len(words[i+1]) - 6])
                 return
 
     def get_cookies(self, data):
@@ -190,8 +191,6 @@ class Crawler:
                     self.frontier.append(url)
                     continue
                 if len(self.flags) == 5:
-                    for flag in self.flags:
-                        print(flag)
                     sys.exit(0)
                 self.frontier.remove(url)
                 #sys.stderr.write(str(self.frontier))
