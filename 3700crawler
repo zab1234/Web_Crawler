@@ -99,7 +99,6 @@ class Crawler:
                 count = 0
             final += data
             if count == 7:
-                sys.stderr.write(final)
                 return final
 
     def read_header(self, socket):
@@ -113,7 +112,6 @@ class Crawler:
                 count = 0
             final = final + data
             if count == 4:
-                sys.stderr.write(final)
                 return final
 
     def send_get(self, address, socket):
@@ -126,7 +124,6 @@ class Crawler:
             request += "\r\n"
         request = request+'Connection: Keep-Alive\r\n'
         request = request+"\r\n"
-        sys.stderr.write(request)
         request = request.encode('ascii')
         socket.send(request)
         self.visited.append(address)
@@ -145,9 +142,8 @@ class Crawler:
         header = header + '\r\n'
         body = "username="+self.username+"&password="+self.password+"&csrfmiddlewaretoken=" + csrf + "&next=" + "\r\n"
         request = header+body
-        sys.stderr.write(request)
         socket.send(request.encode('ascii'))
-        sys.exit(0)
+        #sys.exit(0)
 
     def open_connection(self):
         mysocket = ssl.create_default_context().wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM),
@@ -195,7 +191,6 @@ class Crawler:
                     sys.exit(0)
                 self.frontier.remove(url)
                 #sys.stderr.write(str(self.frontier))
-                sys.stderr.write(str(self.flags))
 
 
 
