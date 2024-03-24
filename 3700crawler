@@ -53,7 +53,6 @@ class Crawler:
             if 'style="color:red">FLAG:' in words[i]:
                 self.flags.append(words[i+1][0:len(words[i+1]) - 6])
                 print(words[i+1][0:len(words[i+1]) - 6])
-                sys.exit(0)
                 return
 
     def get_cookies(self, data):
@@ -148,6 +147,7 @@ class Crawler:
         request = header+body
         sys.stderr.write(request)
         socket.send(request.encode('ascii'))
+        sys.exit(0)
 
     def open_connection(self):
         mysocket = ssl.create_default_context().wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM),
