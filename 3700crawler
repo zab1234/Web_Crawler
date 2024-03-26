@@ -92,6 +92,7 @@ class Crawler:
                 seperator = line.index(":")
                 cookies = line[seperator+1:].split('=')
                 self.cookies[cookies[0].strip()] = cookies[1][:cookies[1].index(';')]
+                return
 
     def start(self, mysocket):
         #socket = self.open_connection()
