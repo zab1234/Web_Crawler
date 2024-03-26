@@ -103,6 +103,8 @@ class Crawler:
         #data = self.read_data(mysocket)
         self.parse_document(data)
         self.get_cookies(header)
+        #sys.exit(0)
+
 
     def get_csrf(self, data):
         data.index('name="csrfmiddlewaretoken" value="')
@@ -181,7 +183,6 @@ class Crawler:
         body = "username="+self.username+"&password="+self.password+"&csrfmiddlewaretoken=" + csrf + "&next=" + "\r\n"
         request = header+body
         socket.send(request.encode('ascii'))
-        sys.exit(0)
 
     def open_connection(self):
         mysocket = ssl.create_default_context().wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM),
@@ -199,7 +200,11 @@ class Crawler:
     def run(self):
         mysocket = self.open_connection()
         self.start(mysocket)
+        count = 0
         while True:
+            if count == 5:
+                sys.exit(0)
+            count+=1
             for url in self.frontier:
                 retry = False
                 if url in self.visited:
