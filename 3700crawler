@@ -7,21 +7,46 @@ DEFAULT_SERVER = "www.3700.network"
 DEFAULT_PORT = 443
 
 
+
 class MyParser(html.parser.HTMLParser):
     def __init__(self):
         super().__init__()
         self.hyperlinks = []
-        self.flags = []
+        self.flag = ''
         self.flag_found = False
+        self.head_done = False
+        self.head = ''
 
     def handle_starttag(self, tag, attrs):
         if tag == "a":
             for key, value in attrs:
                 if key == "href" and value[0] == "/":
                     self.hyperlinks.append(value)
+        elif tag == 'h3':
+            for key, value in attrs:
+                if key == 'class' and value == 'secret_flag':
+                    self.flag_found = True
+
+    def handle_data(self, data):
+        if self.flag_found:
+            self.flag = data[6:70]
+            #print(self.flag)
+        self.flag_found = False
+        if not self.head_done:
+            self.head += data
+        if '\r\n\r\n' in data:
+            self.head_done = True
 
     def get_hyperlinks(self):
         return self.hyperlinks
+
+    def get_flag(self):
+        return self.flag
+
+    def get_header(self):
+        #sys.stderr.write(self.head)
+        return self.head
+
 
 
 class Crawler:
@@ -39,7 +64,7 @@ class Crawler:
         self.visited.append('/accounts/logout/')
         self.frontier.append('/fakebook/')
 
-    def parse_document(self, data):
+    def parse_documnt(self, data):
         run = True
         flag_data = data
         while run:
@@ -62,20 +87,18 @@ class Crawler:
         except ValueError:
             return
 
-    def parse_documnt(self, data):
+    def parse_document(self, data):
         parse = MyParser()
         parse.feed(data)
         links = parse.get_hyperlinks()
         for link in links:
             if link not in self.visited:
                 self.frontier.append(link)
+        flag = parse.get_flag()
+        if flag != '':
+            self.flags.append(flag)
+            print(flag)
         parse.close()
-        words = data.split(' ')
-        for i in range(len(words)):
-            if 'style="color:red">FLAG:' in words[i]:
-                self.flags.append(words[i+1][0:len(words[i+1]) - 6])
-                print(words[i+1][0:len(words[i+1]) - 6])
-                return
 
     def get_cookies(self, data):
         data = data.split('\r\n')
@@ -199,12 +222,8 @@ class Crawler:
     def run(self):
         mysocket = self.open_connection()
         self.start(mysocket)
-        count = 0
         while True:
             for url in self.frontier:
-                if count == 5:
-                    sys.exit(0)
-                count += 1
                 retry = False
                 if url in self.visited:
                     self.frontier.remove(url)
@@ -233,6 +252,7 @@ class Crawler:
                     mysocket.close()
                     sys.exit(0)
                 self.frontier.remove(url)
+                sys.exit(0)
                 #sys.stderr.write(str(self.frontier))
 
 
