@@ -92,7 +92,7 @@ class Crawler:
                 seperator = line.index(":")
                 cookies = line[seperator+1:].split('=')
                 self.cookies[cookies[0].strip()] = cookies[1][:cookies[1].index(';')]
-                return
+                #return
 
     def start(self, mysocket):
         #socket = self.open_connection()
@@ -142,7 +142,7 @@ class Crawler:
             data = socket.recv(313).decode('ascii')
             final = final + data
             if '\r\n\r\n' in final:
-                #sys.stderr.write((final))
+                sys.stderr.write((final))
                 return final
 
     def send_get(self, address, socket):
@@ -214,7 +214,8 @@ class Crawler:
                     continue
                 elif header[9:12] == "503":
                     retry = True
-                self.get_cookies(header)
+                #sys.stderr.write(data)
+                #self.get_cookies(header)
                 if retry:
                     self.visited.remove(url)
                     self.frontier.append(url)
