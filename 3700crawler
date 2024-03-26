@@ -166,10 +166,10 @@ class Crawler:
             header = header[0:len(header)-1]
             header = header + '\r\n'
         header = header + "Content-Length: " + str(186) + "\r\n"
-        header = header + "User-Agent: HTTPTool/1.0\r\nContent-Type: application/x-www-form-urlencoded\r\n"
+        header = header + "User-Agent: HTTPTool/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\n"
         header = header+'Connection: keep-alive\r\n'
         header = header + '\r\n'
-        body = "username="+self.username+"&password="+self.password+"&csrfmiddlewaretoken=" + csrf + "&next=" + "\r\n"
+        body = "username="+self.username+"&password="+self.password+"&csrfmiddlewaretoken=" + csrf + "&next="# +'\r\n'
         request = header+body
         sys.stderr.write(request)
         socket.send(request.encode('ascii'))
