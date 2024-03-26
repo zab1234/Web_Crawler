@@ -41,6 +41,29 @@ class Crawler:
         self.frontier.append('/fakebook/')
 
     def parse_document(self, data):
+        run = True
+        flag_data = data
+        while run:
+            try:
+                index = data.index('<a href="') + 9
+                end = data[index:].index('">') + index
+                self.frontier.append(data[index:end])
+                data = data[end:]
+                #sys.stderr.write(str(index)+'\n')
+                #sys.stderr.write(str(end))
+                #sys.stderr.write(str(data[index:end]))
+                #sys.exit(0)
+            except ValueError:
+                run = False
+        try:
+            index = flag_data.index('FLAG: ') + 6
+            end = flag_data[index:].index('</h3>') + index - 1
+            self.flags.append(flag_data[index:end])
+            print(flag_data[index:end])
+        except ValueError:
+            return
+
+    def parse_documnt(self, data):
         parse = MyParser()
         parse.feed(data)
         links = parse.get_hyperlinks()
@@ -100,7 +123,6 @@ class Crawler:
             final += data
             if count == 7:
                 return final
-
 
     def read_data(self, socket):
         final = ""
