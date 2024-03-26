@@ -140,6 +140,7 @@ class Crawler:
             data = socket.recv(1).decode('ascii')
             final = final + data
             if '\r\n\r\n' in final:
+                sys.stderr.write(final)
                 return final
 
     def read_header_loop(self, socket):
@@ -148,7 +149,7 @@ class Crawler:
             data = socket.recv(313).decode('ascii')
             final = final + data
             if '\r\n\r\n' in final:
-                #sys.stderr.write((final))
+                sys.stderr.write((final))
                 return final
 
     def send_get(self, address, socket):
@@ -198,7 +199,11 @@ class Crawler:
     def run(self):
         mysocket = self.open_connection()
         self.start(mysocket)
+        count = 0
         while True:
+            if count == 100:
+                sys.exit(0)
+            count += 1
             for url in self.frontier:
                 retry = False
                 if url in self.visited:
