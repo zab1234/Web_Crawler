@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import select
 import socket, ssl, html.parser, sys
 
 DEFAULT_SERVER = "www.3700.network"
@@ -202,10 +201,10 @@ class Crawler:
         self.start(mysocket)
         count = 0
         while True:
-            if count == 5:
-                sys.exit(0)
-            count+=1
             for url in self.frontier:
+                if count == 5:
+                    sys.exit(0)
+                count += 1
                 retry = False
                 if url in self.visited:
                     self.frontier.remove(url)
