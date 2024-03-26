@@ -7,7 +7,6 @@ DEFAULT_SERVER = "www.3700.network"
 DEFAULT_PORT = 443
 
 
-
 class MyParser(html.parser.HTMLParser):
     def __init__(self):
         super().__init__()
@@ -64,29 +63,6 @@ class Crawler:
         self.visited.append('/accounts/logout/')
         self.frontier.append('/fakebook/')
 
-    def parse_documnt(self, data):
-        run = True
-        flag_data = data
-        while run:
-            try:
-                index = data.index('<a href="') + 9
-                end = data[index:].index('">') + index
-                self.frontier.append(data[index:end])
-                data = data[end:]
-                #sys.stderr.write(str(index)+'\n')
-                #sys.stderr.write(str(end))
-                #sys.stderr.write(str(data[index:end]))
-                #sys.exit(0)
-            except ValueError:
-                run = False
-        try:
-            index = flag_data.index('FLAG: ') + 6
-            end = flag_data[index:].index('</h3>') + index - 1
-            self.flags.append(flag_data[index:end])
-            print(flag_data[index:end])
-        except ValueError:
-            return
-
     def parse_document(self, data):
         parse = MyParser()
         parse.feed(data)
@@ -98,7 +74,9 @@ class Crawler:
         if flag != '':
             self.flags.append(flag)
             print(flag)
+        head = parse.get_header()
         parse.close()
+        return head
 
     def get_cookies(self, data):
         data = data.split('\r\n')
@@ -135,18 +113,6 @@ class Crawler:
             if data[i] == '"':
                 return data[:i]
 
-    def read_data(self, socket):
-        final = ""
-        count = 0
-        while True:
-            data = socket.recv(1).decode('ascii')
-            if data == '<' or data == '/' or data == 'h'or data == 't'or data == 'm'or data == 'l' or data == '>':
-                count += 1
-            else:
-                count = 0
-            final += data
-            if count == 7:
-                return final
 
     def read_data(self, socket):
         final = ""
@@ -186,6 +152,7 @@ class Crawler:
             request += "\r\n"
         request = request+'Connection: Keep-Alive\r\n'
         request = request+"\r\n"
+        sys.stderr.write(request)
         request = request.encode('ascii')
         socket.send(request)
         self.visited.append(address)
@@ -204,6 +171,7 @@ class Crawler:
         header = header + '\r\n'
         body = "username="+self.username+"&password="+self.password+"&csrfmiddlewaretoken=" + csrf + "&next=" + "\r\n"
         request = header+body
+        sys.stderr.write(request)
         socket.send(request.encode('ascii'))
 
     def open_connection(self):
@@ -222,6 +190,7 @@ class Crawler:
     def run(self):
         mysocket = self.open_connection()
         self.start(mysocket)
+        sys.exit(0)
         while True:
             for url in self.frontier:
                 retry = False
@@ -252,7 +221,7 @@ class Crawler:
                     mysocket.close()
                     sys.exit(0)
                 self.frontier.remove(url)
-                sys.exit(0)
+                #sys.exit(0)
                 #sys.stderr.write(str(self.frontier))
 
 
