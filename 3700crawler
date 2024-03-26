@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import selectors
+
 import select
 import socket, ssl, html.parser, sys
 
@@ -12,7 +14,7 @@ class MyParser(html.parser.HTMLParser):
     def __init__(self):
         super().__init__()
         self.hyperlinks = []
-        self.flags = []
+        self.flag = ''
         self.flag_found = False
 
     def handle_starttag(self, tag, attrs):
@@ -20,9 +22,22 @@ class MyParser(html.parser.HTMLParser):
             for key, value in attrs:
                 if key == "href" and value[0] == "/":
                     self.hyperlinks.append(value)
+        elif tag == 'h3':
+            for key, value in attrs:
+                if key == 'class' and value == 'secret_flag':
+                    self.flag_found = True
+
+    def handle_data(self, data):
+        if self.flag_found:
+            self.flag = data[6:70]
+            #print(self.flag)
+        self.flag_found = False
 
     def get_hyperlinks(self):
         return self.hyperlinks
+
+    def get_flag(self):
+        return self.flag
 
 
 class Crawler:
@@ -47,13 +62,16 @@ class Crawler:
         for link in links:
             if link not in self.visited:
                 self.frontier.append(link)
+        if parse.get_flag() != '':
+            print(parse.get_flag())
+            self.flags.append(parse.get_flag())
         parse.close()
-        words = data.split(' ')
-        for i in range(len(words)):
-            if 'style="color:red">FLAG:' in words[i]:
-                self.flags.append(words[i+1][0:len(words[i+1]) - 6])
-                print(words[i+1][0:len(words[i+1]) - 6])
-                return
+        #words = data.split(' ')
+        #for i in range(len(words)):
+        #    if 'style="color:red">FLAG:' in words[i]:
+        #        self.flags.append(words[i+1][0:len(words[i+1]) - 6])
+        #        print(words[i+1][0:len(words[i+1]) - 6])
+        #        return
 
     def get_cookies(self, data):
         data = data.split('\r\n')
@@ -90,28 +108,28 @@ class Crawler:
 
     def read_data(self, socket):
         final = ""
-        count = 0
         while True:
-            data = socket.recv(1).decode('ascii')
-            if data == '<' or data == '/' or data == 'h'or data == 't'or data == 'm'or data == 'l' or data == '>':
-                count += 1
-            else:
-                count = 0
-            final += data
-            if count == 7:
+            data = socket.recv(4096).decode('ascii')
+            final = final + data
+            if '</html>' in final:
+                #sys.stderr.write(final)
                 return final
 
     def read_header(self, socket):
         final = ''
-        count = 0
         while True:
             data = socket.recv(1).decode('ascii')
-            if data == '\r' or data == '\n':
-                count += 1
-            else:
-                count = 0
             final = final + data
-            if count == 4:
+            if '\r\n\r\n' in final:
+                return final
+
+    def read_header_loop(self, socket):
+        final = ''
+        while True:
+            data = socket.recv(313).decode('ascii')
+            final = final + data
+            if '\r\n\r\n' in final:
+                #sys.stderr.write((final))
                 return final
 
     def send_get(self, address, socket):
@@ -137,7 +155,7 @@ class Crawler:
             header = header[0:len(header)-1]
             header = header + '\r\n'
         header = header + "Content-Length: " + str(186) + "\r\n"
-        header = header + "User-Agent: HTTPTool/1.0\r\nContent-Type: application/x-www-form-urlencoded\r\n"
+        header = header + "User-Agent: HTTPTool/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\n"
         header = header+'Connection: keep-alive\r\n'
         header = header + '\r\n'
         body = "username="+self.username+"&password="+self.password+"&csrfmiddlewaretoken=" + csrf + "&next=" + "\r\n"
@@ -168,7 +186,7 @@ class Crawler:
                     self.frontier.remove(url)
                     continue
                 self.send_get(url, mysocket)
-                header = self.read_header(mysocket)
+                header = self.read_header_loop(mysocket)
                 if header[9:12] == "302":
                     self.find_location(header)
                     self.visited.append(url)
@@ -188,6 +206,7 @@ class Crawler:
                     self.frontier.append(url)
                     continue
                 if len(self.flags) == 5:
+                    mysocket.close()
                     sys.exit(0)
                 self.frontier.remove(url)
                 #sys.stderr.write(str(self.frontier))
