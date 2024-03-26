@@ -225,6 +225,7 @@ class Crawler:
                     self.frontier.append(url)
                     continue
                 if len(self.flags) == 5:
+                    mysocket.close()
                     sys.exit(0)
                 self.frontier.remove(url)
                 #sys.stderr.write(str(self.frontier))
