@@ -16,6 +16,8 @@ class MyParser(html.parser.HTMLParser):
         self.hyperlinks = []
         self.flag = ''
         self.flag_found = False
+        self.head_done = False
+        self.head = ''
 
     def handle_starttag(self, tag, attrs):
         if tag == "a":
@@ -32,12 +34,20 @@ class MyParser(html.parser.HTMLParser):
             self.flag = data[6:70]
             #print(self.flag)
         self.flag_found = False
+        if not self.head_done:
+            self.head += data
+        if '\r\n\r\n' in data:
+            self.head_done = True
 
     def get_hyperlinks(self):
         return self.hyperlinks
 
     def get_flag(self):
         return self.flag
+
+    def get_header(self):
+        #sys.stderr.write(self.head)
+        return self.head
 
 
 class Crawler:
@@ -65,7 +75,9 @@ class Crawler:
         if parse.get_flag() != '':
             print(parse.get_flag())
             self.flags.append(parse.get_flag())
+        head = parse.get_header()
         parse.close()
+        return head
         #words = data.split(' ')
         #for i in range(len(words)):
         #    if 'style="color:red">FLAG:' in words[i]:
@@ -186,7 +198,10 @@ class Crawler:
                     self.frontier.remove(url)
                     continue
                 self.send_get(url, mysocket)
-                header = self.read_header_loop(mysocket)
+                #header = self.read_header_loop(mysocket)
+                data = self.read_data(mysocket)
+                header = self.parse_document(data)
+                #sys.stderr.write(header[9:12])
                 if header[9:12] == "302":
                     self.find_location(header)
                     self.visited.append(url)
@@ -198,8 +213,6 @@ class Crawler:
                     continue
                 elif header[9:12] == "503":
                     retry = True
-                data = self.read_data(mysocket)
-                self.parse_document(data)
                 self.get_cookies(header)
                 if retry:
                     self.visited.remove(url)
