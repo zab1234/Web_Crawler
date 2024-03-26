@@ -224,6 +224,7 @@ class Crawler:
                     mysocket.close()
                     sys.exit(0)
                 self.frontier.remove(url)
+                #sys.stderr.write(header+data)
                 #sys.stderr.write(str(self.frontier))
 
 
