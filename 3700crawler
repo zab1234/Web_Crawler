@@ -120,7 +120,7 @@ class Crawler:
             data = socket.recv(4096).decode('ascii')
             final = final + data
             if '</html>' in final:
-                sys.stderr.write(final)
+                #sys.stderr.write(final)
                 return final
 
 
@@ -130,7 +130,7 @@ class Crawler:
             data = socket.recv(1).decode('ascii')
             final = final + data
             if '\r\n\r\n' in final:
-                sys.stderr.write(final)
+                #sys.stderr.write(final)
                 return final
 
     def read_header_loop(self, socket):
@@ -139,7 +139,7 @@ class Crawler:
             data = socket.recv(313).decode('ascii')
             final = final + data
             if '\r\n\r\n' in final:
-                sys.stderr.write((final))
+                #sys.stderr.write((final))
                 return final
 
     def send_get(self, address, socket):
@@ -152,7 +152,7 @@ class Crawler:
             request += "\r\n"
         request = request+'Connection: Keep-Alive\r\n'
         request = request+"\r\n"
-        sys.stderr.write(request)
+        #sys.stderr.write(request)
         request = request.encode('ascii')
         socket.send(request)
         self.visited.append(address)
@@ -171,7 +171,7 @@ class Crawler:
         header = header + '\r\n'
         body = "username="+self.username+"&password="+self.password+"&csrfmiddlewaretoken=" + csrf + "&next=" +'\r\n'
         request = header+body
-        sys.stderr.write(request)
+        #sys.stderr.write(request)
         socket.send(request.encode('ascii'))
 
     def open_connection(self):
