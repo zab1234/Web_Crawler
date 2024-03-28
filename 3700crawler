@@ -236,10 +236,13 @@ class Crawler:
         # Main function to start the crawler
         mysocket = self.open_connection()  # Establishes the connection
         self.start(mysocket)  # Initiates the first request
-
+        count = 0
         # Continuously crawl until certain conditions are met
         while True:
             for url in self.frontier:
+                if count == 100:
+                    sys.exit(0)
+                count += 1
                 retry = False
                 # If the URL has already been visited, skip it
                 if url in self.visited:
@@ -270,6 +273,7 @@ class Crawler:
                     mysocket = self.open_connection()
                     break
                 data = self.read_data(mysocket)  # Read the body of the response
+                sys.stderr.write(header + data)
                 self.parse_document(data)  # Extract links and flags from the content
                 self.get_cookies(header)  # Extract cookies from the header
                 if len(self.flags) == 5:
