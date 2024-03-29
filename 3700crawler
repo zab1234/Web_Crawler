@@ -52,7 +52,7 @@ class MyParser(html.parser.HTMLParser):
 
     # return header on page
     def get_header(self):
-        sys.stderr.write(self.head)
+        #sys.stderr.write(self.head)
         return self.head
 
 
@@ -138,7 +138,7 @@ class Crawler:
             data = socket.recv(4096).decode('ascii')
             final = final + data
             if '</html>' in final:
-                sys.stderr.write(final)
+                #sys.stderr.write(final)
                 return final
 
     # read header one byte at a time from the socket
